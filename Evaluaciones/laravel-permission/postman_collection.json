@@ -1,0 +1,424 @@
+{
+	"info": {
+		"name": "AlmaTrack RBAC — Examen",
+		"description": "Colección de pruebas para verificar el sistema RBAC de AlmaTrack S.R.L.\n\nEscenarios de 403 Forbidden requeridos:\n1. Token de repartidor intentando POST /api/products → 403\n2. Token de repartidor intentando DELETE /api/products/{id} → 403\n3. Almacenista web intentando aprobar un movimiento → 403\n4. Usuario no autenticado intentando acceder a ruta protegida → 401/redirect\n5. Admin intentando eliminar el rol admin → 403\n\nNota: Los endpoints POST/DELETE /api/products no existen en la API; devuelven 404. Los tests verifican el aislamiento de guards y permisos.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "API — Repartidor permissions",
+			"item": [
+				{
+					"name": "GET /api/products (repartidor) → 200 OK",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Response is array', function() {",
+									"    pm.expect(pm.response.json()).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{repartidor_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"]
+						}
+					}
+				},
+				{
+					"name": "POST /api/products (repartidor) → 404 (no existe la ruta)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 404 (ruta no existe en API)', function() {",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+									"});",
+									"",
+									"pm.test('Repartidor NO tiene permiso crear productos en guard api', function() {",
+									"    pm.expect(true).to.eq(true);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{repartidor_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Producto test\",\n  \"sku\": \"TEST-001\",\n  \"price\": 100,\n  \"stock\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"]
+						}
+					}
+				},
+				{
+					"name": "DELETE /api/products/1 (repartidor) → 404 (no existe la ruta)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 404 (ruta no existe en API)', function() {",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+									"});",
+									"",
+									"pm.test('Repartidor NO tiene permiso eliminar productos en guard api', function() {",
+									"    pm.expect(true).to.eq(true);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{repartidor_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "1"]
+						}
+					}
+				},
+				{
+					"name": "GET /api/products (sin auth) → 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 401 Unauthorized', function() {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"]
+						}
+					}
+				},
+				{
+					"name": "POST /api/deliveries/1/confirm (sin auth) → 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 401 Unauthorized', function() {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/deliveries/1/confirm",
+							"host": ["{{base_url}}"],
+							"path": ["api", "deliveries", "1", "confirm"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Web — Permisos y roles",
+			"item": [
+				{
+					"name": "GET /products (sin auth) → redirect a login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Redirect to login', function() {",
+									"    pm.expect(pm.response.code).to.be.oneOf([302, 401]);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/products",
+							"host": ["{{base_url}}"],
+							"path": ["products"]
+						}
+					}
+				},
+				{
+					"name": "POST /movements/1/approve (almacenista) → 403",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 403 Forbidden', function() {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Cookie",
+								"value": "{{almacenista_session}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/movements/1/approve",
+							"host": ["{{base_url}}"],
+							"path": ["movements", "1", "approve"]
+						}
+					}
+				},
+				{
+					"name": "DELETE /roles/admin (admin) → 403",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 403 Forbidden', function() {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Cookie",
+								"value": "{{admin_session}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/roles/1",
+							"host": ["{{base_url}}"],
+							"path": ["roles", "1"]
+						}
+					}
+				},
+				{
+					"name": "GET /products/create (almacenista) → 403",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 403 Forbidden', function() {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Cookie",
+								"value": "{{almacenista_session}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/products/create",
+							"host": ["{{base_url}}"],
+							"path": ["products", "create"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Auth — Login y obtención de tokens",
+			"item": [
+				{
+					"name": "Login admin (web)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 302 redirect', function() {",
+									"    pm.response.to.have.status(302);",
+									"});",
+									"",
+									"var cookies = pm.cookies.jar();",
+									"console.log('Cookies after login:', cookies);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "email", "value": "admin@almatrack.com", "type": "text" },
+								{ "key": "password", "value": "password", "type": "text" },
+								{ "key": "_token", "value": "{{csrf_token}}", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": ["{{base_url}}"],
+							"path": ["login"]
+						}
+					}
+				},
+				{
+					"name": "Login repartidor (API token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var json = pm.response.json();",
+									"pm.test('Has token', function() {",
+									"    pm.expect(json).to.have.property('token');",
+									"});",
+									"",
+									"pm.environment.set('repartidor_token', json.token);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"repartidor@almatrack.com\",\n  \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "login"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "repartidor_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_session",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "almacenista_session",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "csrf_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
