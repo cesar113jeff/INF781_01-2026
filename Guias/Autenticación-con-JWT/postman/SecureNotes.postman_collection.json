@@ -1,0 +1,934 @@
+{
+  "info": {
+    "name": "SecureNotes API",
+    "description": "INF-781 Examen - API de notas seguras con JWT (Access + Refresh), argon2 y anti-IDOR",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "7d2bfb52-cd9f-407e-bbdd-2173ee0a51e6"
+  },
+  "variable": [
+    { "key": "base_url", "value": "localhost:3000", "type": "default" },
+    { "key": "access_token", "value": "", "type": "default" },
+    { "key": "refresh_token_raw", "value": "", "type": "default" },
+    { "key": "note_id", "value": "", "type": "default" },
+    { "key": "user_a_email", "value": "user_a@test.com", "type": "default" },
+    { "key": "user_a_password", "value": "SecurePass123!", "type": "default" },
+    { "key": "user_b_email", "value": "user_b@test.com", "type": "default" },
+    { "key": "user_b_password", "value": "SecurePass456!", "type": "default" },
+    { "key": "user_a_token", "value": "", "type": "default" },
+    { "key": "user_a_note_id", "value": "", "type": "default" },
+    { "key": "user_b_token", "value": "", "type": "default" },
+    { "key": "user_b_note_id", "value": "", "type": "default" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Endpoints de autenticacion: registro, login, refresh, logout, perfil, sesiones",
+      "item": [
+        {
+          "name": "Register User A",
+          "description": "Registra el usuario A en el sistema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has id, email, accessToken', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.all.keys('id', 'email', 'accessToken');",
+                  "  pm.expect(json.email).to.eql(pm.collectionVariables.get('user_a_email'));",
+                  "});",
+                  "",
+                  "pm.test('accessToken saved', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('user_a_token', json.accessToken);",
+                  "  pm.expect(json.accessToken).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('refresh_token cookie set', function () {",
+                  "  const cookies = pm.response.headers.filter(h => h.key.toLowerCase() === 'set-cookie');",
+                  "  const hasRefresh = cookies.some(h => h.value.includes('refresh_token'));",
+                  "  pm.expect(hasRefresh).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_a_email}}\",\n  \"password\": \"{{user_a_password}}\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/register",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register User B",
+          "description": "Registra el usuario B en el sistema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has id, email, accessToken', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.all.keys('id', 'email', 'accessToken');",
+                  "});",
+                  "",
+                  "pm.test('accessToken saved', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('user_b_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_b_email}}\",\n  \"password\": \"{{user_b_password}}\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/register",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User A",
+          "description": "Inicia sesion con el usuario A y guarda el access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has id, email, accessToken', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.all.keys('id', 'email', 'accessToken');",
+                  "});",
+                  "",
+                  "pm.test('accessToken saved', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('user_a_token', json.accessToken);",
+                  "  pm.expect(json.accessToken).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('refresh_token cookie set', function () {",
+                  "  const cookies = pm.response.headers.filter(h => h.key.toLowerCase() === 'set-cookie');",
+                  "  const hasRefresh = cookies.some(h => h.value.includes('refresh_token'));",
+                  "  pm.expect(hasRefresh).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_a_email}}\",\n  \"password\": \"{{user_a_password}}\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login User B",
+          "description": "Inicia sesion con el usuario B y guarda el access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('accessToken saved', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('user_b_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_b_email}}\",\n  \"password\": \"{{user_b_password}}\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "description": "Refresca el access token usando el refresh token (cookie httpOnly). Nota: en Postman debes tener la cookie refresh_token configurada.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('New accessToken returned', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('accessToken');",
+                  "  pm.expect(json.accessToken).to.be.a('string');",
+                  "  pm.collectionVariables.set('access_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/auth/refresh",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "description": "Obtiene el perfil del usuario autenticado (requiere Access Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has id, email, createdAt', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.all.keys('id', 'email', 'createdAt');",
+                  "  pm.expect(json.email).to.eql(pm.collectionVariables.get('user_a_email'));",
+                  "});",
+                  "",
+                  "pm.test('Password not exposed', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/auth/me",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Get Sessions",
+          "description": "Lista las sesiones activas del usuario autenticado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array of sessions', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "  if (json.length > 0) {",
+                  "    pm.expect(json[0]).to.have.all.keys('id', 'userAgent', 'createdAt', 'expiresAt');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/auth/sessions",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "description": "Cierra la sesion actual, revoca el refresh token y limpia la cookie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Message says logged out', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('Logged out');",
+                  "});",
+                  "",
+                  "pm.test('refresh_token cookie cleared', function () {",
+                  "  const cookies = pm.response.headers.filter(h => h.key.toLowerCase() === 'set-cookie');",
+                  "  const hasClear = cookies.some(h => h.value.includes('refresh_token=;') || h.value.includes('refresh_token=\"\"'));",
+                  "  pm.expect(hasClear).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/auth/logout",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notes",
+      "description": "CRUD de notas con proteccion anti-IDOR",
+      "item": [
+        {
+          "name": "Create Note (User A)",
+          "description": "Crea una nota como usuario A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has id, title, content, ownerId, createdAt, updatedAt', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.all.keys('id', 'title', 'content', 'ownerId', 'createdAt', 'updatedAt');",
+                  "});",
+                  "",
+                  "pm.test('note_id saved', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('user_a_note_id', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nota de User A\",\n  \"content\": \"Contenido privado de User A\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/notes",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes"]
+            }
+          }
+        },
+        {
+          "name": "Create Note (User B)",
+          "description": "Crea una nota como usuario B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('note_id saved', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('user_b_note_id', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_b_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nota de User B\",\n  \"content\": \"Contenido privado de User B\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/notes",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes"]
+            }
+          }
+        },
+        {
+          "name": "List Notes (User A)",
+          "description": "Lista solo las notas del usuario A (anti-IDOR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('All notes belong to User A (anti-IDOR)', function () {",
+                  "  const json = pm.response.json();",
+                  "  json.forEach(note => {",
+                  "    pm.expect(note).to.have.property('ownerId');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/notes",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes"]
+            }
+          }
+        },
+        {
+          "name": "Get Note by ID (User A)",
+          "description": "Obtiene una nota especifica del usuario A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has expected fields', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.all.keys('id', 'title', 'content', 'ownerId', 'createdAt', 'updatedAt');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/notes/{{user_a_note_id}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes", "{{user_a_note_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Note (User A)",
+          "description": "Actualiza la nota del usuario A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Title updated', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.title).to.eql('Nota Actualizada');",
+                  "});",
+                  "",
+                  "pm.test('updatedAt changed', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.updatedAt).to.not.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nota Actualizada\",\n  \"content\": \"Contenido actualizado de User A\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/notes/{{user_a_note_id}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes", "{{user_a_note_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Note (User A)",
+          "description": "Elimina la nota del usuario A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Message says deleted', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('deleted');",
+                  "});",
+                  "",
+                  "pm.test('Verify deleted - should return 404', function (done) {",
+                  "  pm.sendRequest({",
+                  "    url: pm.collectionVariables.get('base_url') ? 'http://' + pm.collectionVariables.get('base_url') + '/notes/' + pm.collectionVariables.get('user_a_note_id') : 'http://localhost:3000/notes/' + pm.collectionVariables.get('user_a_note_id'),",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "      'Authorization': 'Bearer ' + pm.collectionVariables.get('user_a_token')",
+                  "    }",
+                  "  }, function (err, res) {",
+                  "    pm.expect(res.code).to.eql(404);",
+                  "    done();",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_a_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/notes/{{user_a_note_id}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes", "{{user_a_note_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security Tests",
+      "description": "Pruebas de seguridad: anti-IDOR, autenticacion, autorizacion, reuse detection",
+      "item": [
+        {
+          "name": "TEST: Access without token",
+          "description": "Intenta acceder a /notes sin token. Debe retornar 401.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Unauthorized', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Error message present', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{base_url}}/notes",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Access with invalid token",
+          "description": "Intenta acceder con un token JWT invalido. Debe retornar 401.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Unauthorized', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer invalid.token.here" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/notes",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Anti-IDOR - User B cannot read User A note",
+          "description": "User B intenta acceder a una nota de User A por ID. Debe retornar 404 (nunca 403).",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 - Not Found (anti-IDOR)', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('NOT 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.not.eql(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_b_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/notes/{{user_a_note_id}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes", "{{user_a_note_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Anti-IDOR - User B cannot update User A note",
+          "description": "User B intenta actualizar una nota de User A. Debe retornar 404.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 - Not Found (anti-IDOR)', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('NOT 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.not.eql(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_b_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"HACKED\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/notes/{{user_a_note_id}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes", "{{user_a_note_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Anti-IDOR - User B cannot delete User A note",
+          "description": "User B intenta eliminar una nota de User A. Debe retornar 404.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 - Not Found (anti-IDOR)', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('NOT 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.not.eql(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_b_token}}" }
+            ],
+            "url": {
+              "raw": "http://{{base_url}}/notes/{{user_a_note_id}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["notes", "{{user_a_note_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Register duplicate email",
+          "description": "Intenta registrar un email ya existente. Debe retornar 409 Conflict.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 - Conflict', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Conflict message', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('already');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_a_email}}\",\n  \"password\": \"{{user_a_password}}\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/register",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Login with wrong password",
+          "description": "Intenta login con password incorrecto. Debe retornar 401.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Unauthorized', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Invalid credentials message', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('Invalid credentials');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_a_email}}\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Register with weak password",
+          "description": "Intenta registrar con password muy corto. Debe retornar 400 por validacion.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Bad Request', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"weak@test.com\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/register",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Invalid JSON body",
+          "description": "Envia JSON malformado. Debe retornar 400.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Bad Request', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "not valid json"
+            },
+            "url": {
+              "raw": "http://{{base_url}}/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "TEST: Access /auth/me without token",
+          "description": "Intenta acceder al perfil sin token. Debe retornar 401.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Unauthorized', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{base_url}}/auth/me",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
