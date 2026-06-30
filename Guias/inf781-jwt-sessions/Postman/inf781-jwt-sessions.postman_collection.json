@@ -1,0 +1,696 @@
+{
+  "info": {
+    "name": "INF781 - JWT Sessions (Lab 8)",
+    "_postman_id": "inf781-jwt-sessions-lab8",
+    "description": "Colección de pruebas para el laboratorio 8: Autenticación JWT con sesiones, rotación de refresh tokens, detección de reúso, revocación y cookies httpOnly.\n\nRequisito: servidor corriendo en http://localhost:3000 con npm run start:dev.\n\nNota: El refresh token viaja exclusivamente como cookie httpOnly con path=/auth. Postman lo maneja automáticamente a través del Cookie Jar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [],
+  "item": [
+    {
+      "name": "01 - Registro y Login",
+      "description": "Flujo básico de registro y autenticación de usuarios.",
+      "item": [
+        {
+          "name": "POST /auth/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Registra un nuevo usuario. Devuelve 201 con accessToken en el body. El refreshToken se envía como cookie httpOnly, NO en el body."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201 or 200', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response has accessToken', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "    pm.expect(json.accessToken).to.be.a('string').and.to.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response does NOT expose refreshToken in body', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('refreshToken');",
+                  "});",
+                  "",
+                  "// Guardar accessToken en variable de entorno",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('accessToken', json.accessToken);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Inicia sesión con credenciales válidas. Devuelve 200 con accessToken. El refreshToken se envía como cookie httpOnly."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has accessToken', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "    pm.expect(json.accessToken).to.be.a('string').and.to.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response does NOT expose refreshToken in body', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('refreshToken');",
+                  "});",
+                  "",
+                  "// Guardar accessToken en variable de entorno",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('accessToken', json.accessToken);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST /auth/login (credenciales inválidas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"wrongpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Intenta iniciar sesión con contraseña incorrecta. Debe devolver 401 Unauthorized."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', function () {",
+                  "    pm.expect(pm.response.code).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST /auth/register (correo duplicado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Intenta registrar un usuario con un correo ya existente. AuthService.register lanza ForbiddenException, NestJS devuelve 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403 Forbidden', function () {",
+                  "    pm.expect(pm.response.code).to.equal(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Rutas protegidas",
+      "description": "Endpoints que requieren un accessToken válido en el header Authorization.",
+      "item": [
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Obtiene el perfil del usuario autenticado. Requiere Bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains sub and email', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('sub');",
+                  "    pm.expect(json).to.have.property('email');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "GET /auth/me (sin token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Intenta acceder al perfil sin token de autenticación. Debe devolver 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', function () {",
+                  "    pm.expect(pm.response.code).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "GET /auth/sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
+            },
+            "description": "Lista las sesiones activas del usuario. Cada elemento tiene id, userAgent, createdAt, expiresAt. NO expone hashedToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Each session has expected fields (no hashedToken)', function () {",
+                  "    const sessions = pm.response.json();",
+                  "    sessions.forEach(function (session) {",
+                  "        pm.expect(session).to.have.property('id');",
+                  "        pm.expect(session).to.have.property('userAgent');",
+                  "        pm.expect(session).to.have.property('createdAt');",
+                  "        pm.expect(session).to.have.property('expiresAt');",
+                  "        pm.expect(session).to.not.have.property('hashedToken');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Refresh y Rotación",
+      "description": "Pruebas de rotación de refresh tokens, detección de reúso y revocación.",
+      "item": [
+        {
+          "name": "POST /auth/refresh",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresca el accessToken usando la cookie httpOnly refreshToken. Postman envía la cookie automáticamente desde el Cookie Jar. No requiere Authorization header."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Guardar el accessToken actual antes de refrescar para comparar después",
+                  "pm.environment.set('previousAccessToken', pm.environment.get('accessToken'));",
+                  "",
+                  "// Capturar el valor de la cookie refreshToken ANTES de la rotación",
+                  "// Esto se usa en la request de reúso (request 9)",
+                  "const cookies = pm.cookies.getAll();",
+                  "const refreshTokenCookie = cookies.find(function(c) { return c.name === 'refreshToken'; });",
+                  "if (refreshTokenCookie) {",
+                  "    pm.environment.set('oldRefreshTokenForReuseTest', refreshTokenCookie.value);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('New accessToken is different from previous', function () {",
+                  "    const json = pm.response.json();",
+                  "    const previousToken = pm.environment.get('previousAccessToken');",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "    pm.expect(json.accessToken).to.be.a('string').and.to.not.be.empty;",
+                  "    if (previousToken) {",
+                  "        pm.expect(json.accessToken).to.not.equal(previousToken);",
+                  "    }",
+                  "});",
+                  "",
+                  "// Guardar el nuevo accessToken",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('accessToken', json.accessToken);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST /auth/refresh (reúso de token rotado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "refreshToken={{oldRefreshTokenForReuseTest}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Intenta reutilizar un refreshToken que ya fue rotado. El backend debe detectar el reúso, ejecutar revokeAll y devolver 403. IMPORTANTE: ejecutar primero la request anterior 'POST /auth/refresh' para que la cookie antigua quede capturada en la variable oldRefreshTokenForReuseTest."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403 Forbidden (reuse detected)', function () {",
+                  "    pm.expect(pm.response.code).to.equal(403);",
+                  "});",
+                  "",
+                  "pm.test('Response indicates reuse detected', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "    pm.expect(json.message.toLowerCase()).to.include('reúso').or.to.include('reuse');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "GET /auth/sessions (verificar revocación global tras reúso)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
+            },
+            "description": "Verifica que tras el reúso detectado, todas las sesiones del usuario fueron revocadas. El array de sesiones activas debe estar vacío."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('All sessions revoked (empty array)', function () {",
+                  "    const sessions = pm.response.json();",
+                  "    pm.expect(sessions).to.be.an('array');",
+                  "    pm.expect(sessions).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Sesiones múltiples y Logout",
+      "description": "Pruebas de sesiones simultáneas en múltiples dispositivos y cierre de sesión por dispositivo.",
+      "item": [
+        {
+          "name": "POST /auth/login (Dispositivo A)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "User-Agent",
+                "value": "PostmanRuntime-DeviceA"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Inicia sesión simulando un dispositivo A. El User-Agent personalizado identifica esta sesión."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has accessToken', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "});",
+                  "",
+                  "// Guardar accessToken del dispositivo A",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('accessTokenDeviceA', json.accessToken);",
+                  "pm.environment.set('accessToken', json.accessToken);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST /auth/login (Dispositivo B)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "User-Agent",
+                "value": "PostmanRuntime-DeviceB"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Inicia sesión simulando un dispositivo B (mismo usuario, otra sesión). IMPORTANTE: Postman comparte Cookie Jar entre requests. Para un aislamiento estricto entre dispositivos, usar Postman Runner o instancias separadas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has accessToken', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "});",
+                  "",
+                  "// Guardar accessToken del dispositivo B",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('accessTokenDeviceB', json.accessToken);",
+                  "pm.environment.set('accessToken', json.accessToken);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "GET /auth/sessions (debe listar 2 sesiones activas)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
+            },
+            "description": "Verifica que existen 2 sesiones activas correspondientes a los dos dispositivos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Two active sessions exist', function () {",
+                  "    const sessions = pm.response.json();",
+                  "    pm.expect(sessions).to.be.an('array');",
+                  "    pm.expect(sessions).to.have.lengthOf(2);",
+                  "});",
+                  "",
+                  "pm.test('Sessions correspond to DeviceA and DeviceB', function () {",
+                  "    const sessions = pm.response.json();",
+                  "    const userAgents = sessions.map(function(s) { return s.userAgent; });",
+                  "    pm.expect(userAgents).to.include('PostmanRuntime-DeviceA');",
+                  "    pm.expect(userAgents).to.include('PostmanRuntime-DeviceB');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Cierra la sesión actual (dispositivo). Usa la cookie refreshToken del Cookie Jar. El backend ejecuta clearCookie('refreshToken', { path: '/auth' })."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response message indicates session closed', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "    pm.expect(json.message.toLowerCase()).to.include('sesión cerrada').or.to.include('sesion cerrada');",
+                  "});",
+                  "",
+                  "// Verificar que la cookie refreshToken fue eliminada",
+                  "pm.test('refreshToken cookie cleared after logout', function () {",
+                  "    const cookies = pm.cookies.getAll();",
+                  "    const refreshTokenCookie = cookies.find(function(c) { return c.name === 'refreshToken'; });",
+                  "    pm.expect(refreshTokenCookie).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "GET /auth/sessions (tras logout, debe quedar 1 sesión activa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessTokenDeviceA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
+            },
+            "description": "Verifica que tras el logout del dispositivo B, queda exactamente 1 sesión activa (la del dispositivo A). Confirma que el logout es por dispositivo, no global."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('One active session remains after logout', function () {",
+                  "    const sessions = pm.response.json();",
+                  "    pm.expect(sessions).to.be.an('array');",
+                  "    pm.expect(sessions).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "event": []
+}
